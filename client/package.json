@@ -1,0 +1,15 @@
+{
+  "name": "GameController",
+  "version": "1.0.0",
+  "description": "Serves a webpage that will act as a controller for our game.",
+  "main": "webappserver.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Max McCord",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.13.3"
+  }
+}
