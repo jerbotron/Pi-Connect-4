@@ -1,35 +1,51 @@
 <html>
 <head>
-	<title>Controller</title>
+    <title>Controller</title>
 
-	<!-- CSS Imports -->
-	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <!-- CSS Imports -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 
-	<!-- Javascript Imports -->
-	<!-- PubNub -->
-	<script src="https://cdn.pubnub.com/pubnub-3.16.3.min.js"></script>
-	<!-- Angular -->
-	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular.min.js"></script>
-	<!-- Bootstrap -->
-	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
-	<!-- Custom -->
-	<script src="/controller.js"></script>
+    <link href="piconnect4.css" rel="stylesheet" type='text/css'>
+
+    <!-- Javascript Imports -->
+    <!-- PubNub -->
+    <script src="https://cdn.pubnub.com/pubnub-3.16.3.min.js"></script>
+    <!-- Angular -->
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.15/angular.min.js"></script>
+    <!-- Bootstrap -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <!-- Custom -->
+    <script src="/controller.js"></script>
 </head>
 
 <body>
 
-	<div class="container text-center" ng-app="app", ng-controller="controller">
-		<h1>Controller</h1>
+    <div class="container text-center" ng-app="app", ng-controller="controller">
+        <h1>Controller</h1>
 
-		<p>{{game_message}}</p>
+        <p>{{game_message}}</p>
 
-		<input type="button" value="Join Game" ng-click="joinGame()" />
-		<input type="button" value="Ready" ng-click="sendReady()" /><br /><br />
+        <input type="button" value="Join Game" ng-click="joinGame()" />
+        <input type="button" value="Ready" ng-click="sendReady()" /><br/><br/>
 
-		<input type="button" value="Left" ng-click="sendCommand(COMMAND.LEFT)" />
-		<input type="button" value="Right" ng-click="sendCommand(COMMAND.RIGHT)" />
-		<input type="button" value="Drop" ng-click="sendCommand(COMMAND.DROP)" />
-	</div>
+        <input type="button" value="Left" ng-click="sendCommand(COMMAND.LEFT)" />
+        <input type="button" value="Right" ng-click="sendCommand(COMMAND.RIGHT)" />
+        <input type="button" value="Drop" ng-click="sendCommand(COMMAND.DROP)" />
+        <br/>
+        <div class="board">
+            <ul class="board-row">
+                <li class="tile">
+                <span class="piece"></span></li><li class="tile">
+                <span class="piece"></span></li><li class="tile">
+                <span class="piece"></span></li><li class="tile">
+                <span class="piece"></span></li><li class="tile">
+                <span class="piece"></span></li><li class="tile">
+                <span class="piece"></span></li><li class="tile">
+                <span class="piece"></span></li><li class="tile">
+                <span class="piece"></span></li>
+            </ul>
+        </div>
+    </div>
 </body>
 
 </html>
