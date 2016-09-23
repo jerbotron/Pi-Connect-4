@@ -44,7 +44,6 @@ class ledMatrix(object):
 
         self.N_GREEN_PINS = [8,6,4,2,0]
         self.N_RED_PINS = [9,7,5,3,1]
-        self.update = True
 
     def updateDisplay(self, interval, col=0):
         self.updateColumn(col)
@@ -59,8 +58,6 @@ class ledMatrix(object):
         self.dataArray[0][i] = LED_GREEN
 
     def updateColumn(self, col):
-        # for col in range(5):
-        self.update = False
         P_dataOutGreen = 0
         P_dataOutRed = 0
         N_dataOut = 0

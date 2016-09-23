@@ -1,12 +1,12 @@
-// Author: Max McCord
-// Date:   Dec 12, 2015
+// Author: Jeremy Wang
 
-var port = process.argv[2] || 80;
-
-var fs      = require('fs');
 var express = require('express');
+var fs      = require('fs');
 
 var app = express();
+var server = require('http').createServer(app);
+var port = process.env.PORT || 80;
+
 app.use(express.static('public', { index: false })); // serve public directory; don't auto-serve index.html
 
 app.get('/', function (req, res) {
@@ -16,6 +16,7 @@ app.get('/', function (req, res) {
    });
 });
 
-var server = app.listen(port, function () {
-   console.log('listening on port ' + port + '...');
+// replace 5000 with port number when deploying
+server.listen(5000, function () {
+   console.log('listening on port: ' + 5000 + '...');
 });

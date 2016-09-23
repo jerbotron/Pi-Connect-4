@@ -82,8 +82,8 @@ Starting the game:
 ledgame_server1: { msg: START_GAME, color: red }
 ledgame_player1: { msg: ACK }
 
-ledgame_server1: { msg: START_GAME, color: green }
-ledgame_player1: { msg: ACK }
+ledgame_server2: { msg: START_GAME, color: green }
+ledgame_player2: { msg: ACK }
 ```
 
 Selecting a player for a turn:
@@ -107,7 +107,7 @@ ledgame_player1: { msg: DROP }
 ledgame_server1: { msg: ACK }
 ```
 
-Once a DROP message has been sent, a player's term ends. After the drop has been processed, the
+Once a DROP message has been sent, a player's turn ends. After the drop has been processed, the
 server will either request the other player's turn, or send out "game over" messages to each player
 if the game has been one.
 
@@ -116,8 +116,8 @@ Game Over message:
 ledgame_server1: { msg: GAME_OVER, reason: WIN }
 ledgame_player1: { msg: ACK }
 
-ledgame_server1: { msg: GAME_OVER, reason: LOSE }
-ledgame_player1: { msg: ACK }
+ledgame_server2: { msg: GAME_OVER, reason: LOSE }
+ledgame_player2: { msg: ACK }
 
 ledgame_server1: { msg: GAME_OVER, reason: PLAYER_LEFT }
 ledgame_player1: { msg: ACK }

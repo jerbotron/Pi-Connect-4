@@ -1,4 +1,4 @@
-# Connect4Led
+# Pi Connect4
 
 ## Running the Controller WebApp
 
