@@ -1,4 +1,4 @@
-# Pi Connect4
+# Pi Connect 4
 
 ## Running the Controller WebApp
 
