@@ -15,6 +15,8 @@ var MSG = {
    GAME_OVER      : 'game_over'
 };
 
+
+
 var SERVER = (function () {
    // this queue will hold messages received from any channel before they are processed
    var messageQueue = [];
@@ -44,26 +46,36 @@ var SERVER = (function () {
       // don't call the callback until we get a response from the server
       while (messageQueue.size == 0) {
          var msg = messageQueue.shift();
-
       }
    };
 
    ////////////////////
    // PUBLIC METHODS //
-   ////////////////////
 
    var server = {};
 
    server.subscribeToChannel = function (playerNum) {
       pubnub.subscribe({
-         channel : 'ledgame_server' + playerNum,
-         message : enqueueMessage
+         channel : 'ledgame_server',
+         message : enqueueMessage,
+         callback : function(m) {
+            console.log(m);
+         },
+         error: function(err) {
+            console.log(err);
+         }
       });
    };
 
    server.requestJoin = function (callback) {
       console.log("server.requestJoin");
-
+      pubnub.publish({
+         channel : 'ledgame_server',
+         message : 'client request join',
+         callback : function(m) {
+            console.log(m);
+         }
+      });
    };
 
    server.sendReady = function (callback) {
@@ -71,21 +83,70 @@ var SERVER = (function () {
    };
 
    return server;
+
 })(); // var SERVER
 
+
+////////////////////////////
+// Angular App Controller //
+////////////////////////////
 var app = angular.module('app', []);
 
 app.controller('controller', function ($scope) {
-   // constants
+
+   ///////////////
+   // Constants //
+
    $scope.COMMAND = {
       LEFT:  0,
       RIGHT: 1,
       DROP:  2
    };
 
-   // game state variables
+   var ROW_COUNT = 5;
+   var COL_COUNT = 8;
+
+   var TILE_STATE = {
+      EMPTY: 'empty',
+      RED: 'red',
+      YELLOW: 'yellow'
+   };
+
+   /* Game board structure:
+   [
+      row: [{state: EMPTY}, {state: EMPTY}, ...],
+      row: [{state: EMPTY}, {state: EMPTY}, ...],
+      row: [{state: EMPTY}, {state: EMPTY}, ...],
+      ...
+   ]
+   */
+   $scope.row = (function() {          // Creates a single row of {COL_COUNT} columns
+      var cols = [];
+      for (var c = 0; c < COL_COUNT; ++c) 
+      {
+         cols.push({state: TILE_STATE.EMPTY});
+      }
+      return cols;
+   })();
+
+   $scope.gameBoard = (function() {    // Creates the gameBoard of {ROW_COUNT} rows
+      var rows = [];
+      for (var r = 0; r < ROW_COUNT; ++r) 
+      {
+         rows.push({row: $scope.row});
+      }
+      return rows;
+   })();
+
+   // Game state variables
    $scope.game_message = 'To join a game, press "Join Game"!';
    $scope.player = 0;
+
+
+   ////////////////////
+   // PUBLIC METHODS //
+
+   SERVER.subscribeToChannel();
 
    $scope.joinGame = function () {
       console.log("joinGame");

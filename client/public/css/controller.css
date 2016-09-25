@@ -17,7 +17,6 @@ li.tile {
 }
 
 span.piece {
-    background-color: white;
     width: 40px;
     height: 40px;
     border-radius: 20px;
@@ -25,3 +24,15 @@ span.piece {
     padding: 0px;
     display: inline-block;
 }
+
+.piece-empty {
+    background-color: white;
+}
+.piece-red {
+    background-color: red;
+}
+.piece-yellow {
+    background-color: #ff0;
+}
+
+
