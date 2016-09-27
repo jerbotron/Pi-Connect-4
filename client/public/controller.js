@@ -4,7 +4,8 @@ var MSG = {
    ACK            : 'ack',
    REQUEST_JOIN   : 'request_join',
    JOIN_SUCCESS   : 'join_success',
-   PLAYER_READY   : 'player_ready',
+   JOIN_FAIL      : 'join_fail',
+   PLAYER_LEFT    : 'player_left',
    START_GAME     : 'start_game',
    REQUEST_TURN   : 'request_turn',
    WAIT_YOUR_TURN : 'wait_your_turn',
@@ -15,77 +16,121 @@ var MSG = {
    GAME_OVER      : 'game_over'
 };
 
+var CHNLS = {
+   LOBBY : "lobby",
+   GAME : "game"
+};
 
+PLAYER_ACTION = {
+   JOIN: 'Join Game',
+   LEAVE: 'Leave Game'
+}
 
-var SERVER = (function () {
-   // this queue will hold messages received from any channel before they are processed
-   var messageQueue = [];
+///////////////////
+// Client Server //
+///////////////////
+var CLIENT_SERVER = (function ($app) {
 
-   var enqueueMessage = function (msg) {
-      messageQueue.push(msg);
-   };
+   function generateUIDNotMoreThan1million() {
+       return ("0000" + (Math.random()*Math.pow(36,4) << 0).toString(36)).slice(-4)
+   }
 
-   // init pubnub and declare function for sending a message
+   /* Subscribe to server lobby channel used to handle 
+      * joining/leaving games
+   */
+   // server object to be returned to the webapp
+   var server = {};
+   // var user_id = pubnub.get_uuid(); // unique client user id
+   var user_id = generateUIDNotMoreThan1million();
 
+   // Initialize PubNub
    var pubnub = PUBNUB({
       publish_key    : 'pub-c-4eb11ea9-5b88-48c9-b43a-9e85200f6197',
-      subscribe_key  : 'sub-c-eac89748-8135-11e6-974e-0619f8945a4f'
+      subscribe_key  : 'sub-c-eac89748-8135-11e6-974e-0619f8945a4f',
+      uuid: user_id,
+      heartbeat: 10,
    });
 
    pubnub.subscribe({
-      channel : 'ledgame_server',
-      message : enqueueMessage
-   });
-
-   var sendMessage = function (playerNum, message, callback) {
-      pubnub.publish({
-         channel : 'ledgame_player' + ( (playerNum != 0) ? playerNum : '' ),
-         message : message
-      });
-
-      // don't call the callback until we get a response from the server
-      while (messageQueue.size == 0) {
-         var msg = messageQueue.shift();
+      channel: CHNLS.LOBBY,
+      message: function(m) {
+         server.handleLobbyRequests(m);
+      },
+      connect: function(m) {
+         pubnub.publish({
+            channel   : CHNLS.LOBBY,
+            message   : {msg : "Client " + user_id + " entered the game server lobby."}
+         });
+      },
+      presence: function(m) {
+         // console.log("presence: " + m);
+      },
+      error: function(m) {
+         console.log("ERROR: couldn't subscribe to server lobby channel");
       }
-   };
+   });
 
    ////////////////////
    // PUBLIC METHODS //
-
-   var server = {};
-
-   server.subscribeToChannel = function (playerNum) {
-      pubnub.subscribe({
-         channel : 'ledgame_server',
-         message : enqueueMessage,
-         callback : function(m) {
-            console.log(m);
-         },
-         error: function(err) {
-            console.log(err);
+   server.handleLobbyRequests = function(message) {
+      // Handle responses from SERVER if message is directed at user's uuid
+      if (message.uuid === user_id) {
+         switch (message.msg) {
+            case MSG.JOIN_SUCCESS: {
+               $app.updateGameInfo("You joined the game!",
+                                   PLAYER_ACTION.LEAVE,
+                                   message.uuid,
+                                   message.playerNumber,
+                                   "Waiting for other player...");
+               break;
+            }
+            case MSG.JOIN_FAIL: {
+               $app.updateGameInfo("Game is currently full! Please try again later.",
+                                   PLAYER_ACTION.JOIN,
+                                   message.uuid,
+                                   '',
+                                   '');
+               break;
+            }
          }
-      });
-   };
+         $app.updateScopeBindings();
+      }
+   }
 
-   server.requestJoin = function (callback) {
-      console.log("server.requestJoin");
+   server.publishMessage = function(channelName, message, errorMsg) {
       pubnub.publish({
-         channel : 'ledgame_server',
-         message : 'client request join',
-         callback : function(m) {
-            console.log(m);
+         channel  : channelName,
+         message  : message,
+         error : function(e) {
+            console.log(errorMsg + ", " + e);
          }
       });
+   }
+
+   server.requestJoin = function() {
+      server.publishMessage(
+         CHNLS.LOBBY,
+         {msg  : MSG.REQUEST_JOIN, 
+          uuid : user_id},
+         "ERROR: client could not subscribe to main game channel");
    };
 
-   server.sendReady = function (callback) {
-      console.log("server.sendReady");
+   server.leaveGame = function(playerNumber) {
+      server.publishMessage(
+         CHNLS.GAME,
+         {msg  : MSG.LEAVE_GAME, 
+          playerNumber : playerNumber, 
+          uuid : user_id},
+         "ERROR: client could not subscribe to main game channel");
    };
+
+   server.getUserId = function() {
+      return user_id;
+   }
 
    return server;
 
-})(); // var SERVER
-
+});
 
 ////////////////////////////
 // Angular App Controller //
@@ -96,7 +141,6 @@ app.controller('controller', function ($scope) {
 
    ///////////////
    // Constants //
-
    $scope.COMMAND = {
       LEFT:  0,
       RIGHT: 1,
@@ -111,6 +155,9 @@ app.controller('controller', function ($scope) {
       RED: 'red',
       YELLOW: 'yellow'
    };
+
+   // Initialize CLIENT_SERVER object
+   var SERVER = CLIENT_SERVER($scope);
 
    /* Game board structure:
    [
@@ -140,40 +187,77 @@ app.controller('controller', function ($scope) {
 
    // Game state variables
    $scope.game_message = 'To join a game, press "Join Game"!';
-   $scope.player = 0;
-
+   $scope.player_action = PLAYER_ACTION.JOIN;
+   $scope.player_id = SERVER.getUserId();
+   $scope.player_number = "";
+   $scope.player_turn = '';
 
    ////////////////////
    // PUBLIC METHODS //
+   $scope.test = function() {
+      console.log("testing");
+   }
 
-   SERVER.subscribeToChannel();
-
-   $scope.joinGame = function () {
-      console.log("joinGame");
-      SERVER.requestJoin();
+   $scope.playerAction = function () {
+      switch ($scope.player_action) {
+         case PLAYER_ACTION.JOIN: {
+            // subscribeToSelf() will call requestJoin() on connect 
+            SERVER.requestJoin();
+            break;
+         }
+         case PLAYER_ACTION.LEAVE: {
+            SERVER.leaveGame($scope.player_number);
+            $scope.updateGameInfo('To join a game, press "Join Game"!',
+                                  PLAYER_ACTION.JOIN,
+                                  SERVER.getUserId(),
+                                  '',
+                                  '');
+            break;
+         }
+      }      
    };
 
-   $scope.sendReady = function () {
-      console.log("sendReady");
-      SERVER.sendReady();
-   };
+   // UI Methods
+   $scope.updateGameInfo = function(gameMessage, 
+                                    playerAction, 
+                                    playerId,
+                                    playerNumber, 
+                                    playerTurn) {
+      $scope.updateGameMessage(gameMessage);
+      $scope.updatePlayerAction(playerAction);
+      $scope.updatePlayerId(playerId)
+      $scope.updatePlayerNumber(playerNumber);
+      $scope.updatePlayerTurn(playerTurn);
+   }
+   $scope.updateGameMessage = function (gameMessage) {
+      $scope.game_message = gameMessage;
+   }
 
-   $scope.sendCommand = function (command) {
-      alert(command);
-      // SERVER.pubnub.publish({
-      //    channel : 'ledgame_player',
-      //    message : {
-      //       player:  $scope.player,
-      //       command: command
-      //    }
-      // });
-   };
+   $scope.updatePlayerAction = function (playerAction) {
+      $scope.player_action = playerAction;
+   }
 
-   // listen for messages from the server
+   $scope.updatePlayerId = function (playerId) {
+      $scope.player_id = playerId;
+   }
 
-   // var processServerMessage = function (message, env, ch, timer, magic_ch) {
-   //    console.log('Message received: ' + JSON.stringify(message));
-   // };
+   $scope.updatePlayerNumber = function (playerNumber) {
+      $scope.player_number = playerNumber;
+   }
 
+   $scope.updatePlayerTurn = function (playerTurn) {
+      $scope.player_turn = playerTurn;
+   }
 
+   $scope.updateScopeBindings = function() {
+      $scope.$apply();
+   }
+
+   ////////////////////////////
+   // Browser Event Handlers //
+   ////////////////////////////
+   $(window).bind("unload",function(e) {
+      SERVER.leaveGame($scope.player_number);
+      e.preventDefault();
+   }); 
 });

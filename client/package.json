@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.13.3",
-    "pubnub": "^4.0.10"
+    "pubnub": "^3.16.3",
+    "socket.io": "^1.4.8"
   }
 }

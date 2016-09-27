@@ -11,7 +11,7 @@ ul.board-row {
 li.tile {
     height: 50px;
     width: 50px;
-    background-color: blue;
+    background-color: #2980b9;
     text-align: center;
     display: inline-block;
 }

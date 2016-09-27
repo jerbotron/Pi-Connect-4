@@ -26,13 +26,14 @@
 
         <p>{{game_message}}</p>
 
-        <input type="button" value="Join Game" ng-click="joinGame()" />
-        <input type="button" value="Ready" ng-click="sendReady()" /><br/><br/>
+        <input type="button" value="{{player_action}}" ng-click="playerAction()" /><br/><br/>
 
-        <input type="button" value="Left" ng-click="sendCommand(COMMAND.LEFT)" />
-        <input type="button" value="Right" ng-click="sendCommand(COMMAND.RIGHT)" />
-        <input type="button" value="Drop" ng-click="sendCommand(COMMAND.DROP)" />
-        <br/>
+        <div class="info">
+            <div>Player Id: {{player_id}}</div>
+            <div>Player number: {{player_number}}</div>
+            <div>Player turn: {{player_turn}}</div>
+        </div>
+
         <div class="board">
             <ul class="board-row" data-ng-repeat="rows in gameBoard">
                 <li class="tile" data-ng-repeat="item in rows.row">
