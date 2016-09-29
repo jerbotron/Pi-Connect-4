@@ -21,9 +21,17 @@ var CHNLS = {
    GAME : "game"
 };
 
-PLAYER_ACTION = {
+var PLAYER_ACTION = {
    JOIN: 'Join Game',
    LEAVE: 'Leave Game'
+}
+
+var GAME_MESSAGE = {
+   JOIN_GAME         : 'To join a game, press "Join Game"!',
+   JOIN_SUCCESS      : 'You joined the game!',
+   GAME_FULL         : 'Game is currently full! Please try again later.',
+   PLAYER_LEFT       : 'Your opponent left the game.',
+   WAIT_FOR_PLAYER   : 'Waiting for other player...'
 }
 
 ///////////////////
@@ -77,15 +85,16 @@ var CLIENT_SERVER = (function ($app) {
       if (message.uuid === user_id) {
          switch (message.msg) {
             case MSG.JOIN_SUCCESS: {
-               $app.updateGameInfo("You joined the game!",
+               $app.updateGameInfo(GAME_MESSAGE.JOIN_SUCCESS,
                                    PLAYER_ACTION.LEAVE,
                                    message.uuid,
                                    message.playerNumber,
                                    "Waiting for other player...");
+               server.joinGame();
                break;
             }
             case MSG.JOIN_FAIL: {
-               $app.updateGameInfo("Game is currently full! Please try again later.",
+               $app.updateGameInfo(GAME_MESSAGE.GAME_FULL,
                                    PLAYER_ACTION.JOIN,
                                    message.uuid,
                                    '',
@@ -97,13 +106,41 @@ var CLIENT_SERVER = (function ($app) {
       }
    }
 
-   server.publishMessage = function(channelName, message, errorMsg) {
+   /*
+      Subscribes to game channel and handles game channel requests
+      * other player's move
+      * other player leaving
+   */
+
+   server.joinGame = function() {
+      pubnub.subscribe({
+         channel : CHNLS.GAME,
+         message : function(m) {
+            console.log(m.msg);
+            if (m.msg === MSG.PLAYER_LEFT && m.uuid != user_id) {
+               $app.alertPlayerLeft();
+            }
+         },
+         error : function(e) {
+            console.log("ERROR: couldn't subscribe to server game channel")
+         }
+      });
+   }
+
+   server.unsubscribeFromChnl = function(channelName) {
+      pubnub.unsubscribe({
+         channel : channelName
+      })
+   }
+
+   server.publishMessage = function(channelName, message, errorMsg, callback) {
       pubnub.publish({
          channel  : channelName,
          message  : message,
          error : function(e) {
             console.log(errorMsg + ", " + e);
-         }
+         },
+         callback : callback
       });
    }
 
@@ -112,16 +149,16 @@ var CLIENT_SERVER = (function ($app) {
          CHNLS.LOBBY,
          {msg  : MSG.REQUEST_JOIN, 
           uuid : user_id},
-         "ERROR: client could not subscribe to main game channel");
+         "ERROR: client could not subscribe to server lobby channel");
    };
 
    server.leaveGame = function(playerNumber) {
+      server.unsubscribeFromChnl(CHNLS.GAME);
       server.publishMessage(
          CHNLS.GAME,
          {msg  : MSG.LEAVE_GAME, 
           playerNumber : playerNumber, 
-          uuid : user_id},
-         "ERROR: client could not subscribe to main game channel");
+          uuid : user_id});
    };
 
    server.getUserId = function() {
@@ -150,7 +187,7 @@ app.controller('controller', function ($scope) {
    var ROW_COUNT = 5;
    var COL_COUNT = 8;
 
-   var TILE_STATE = {
+   var PIECE_STATE = {
       EMPTY: 'empty',
       RED: 'red',
       YELLOW: 'yellow'
@@ -161,32 +198,34 @@ app.controller('controller', function ($scope) {
 
    /* Game board structure:
    [
-      row: [{state: EMPTY}, {state: EMPTY}, ...],
-      row: [{state: EMPTY}, {state: EMPTY}, ...],
-      row: [{state: EMPTY}, {state: EMPTY}, ...],
+      col: [{state: EMPTY}, {state: EMPTY}, ...],
+      col: [{state: EMPTY}, {state: EMPTY}, ...],
+      col: [{state: EMPTY}, {state: EMPTY}, ...],
       ...
    ]
    */
-   $scope.row = (function() {          // Creates a single row of {COL_COUNT} columns
+   var col = (function() {          // Creates a single col of {ROW_COUNT} rows
+      var col = [];
+      for (var r = 0; r < ROW_COUNT; ++r) 
+      {
+         col.push({state: PIECE_STATE.EMPTY});
+      }
+      return col;
+   });
+
+   $scope.gameBoard = (function() {    // Creates the gameBoard of {COL_COUNT} columns
       var cols = [];
       for (var c = 0; c < COL_COUNT; ++c) 
       {
-         cols.push({state: TILE_STATE.EMPTY});
+         cols.push(new col());
       }
       return cols;
    })();
 
-   $scope.gameBoard = (function() {    // Creates the gameBoard of {ROW_COUNT} rows
-      var rows = [];
-      for (var r = 0; r < ROW_COUNT; ++r) 
-      {
-         rows.push({row: $scope.row});
-      }
-      return rows;
-   })();
+   // $scope.gameBoard = [col, col2]
 
    // Game state variables
-   $scope.game_message = 'To join a game, press "Join Game"!';
+   $scope.game_message = GAME_MESSAGE.JOIN_GAME;
    $scope.player_action = PLAYER_ACTION.JOIN;
    $scope.player_id = SERVER.getUserId();
    $scope.player_number = "";
@@ -194,10 +233,6 @@ app.controller('controller', function ($scope) {
 
    ////////////////////
    // PUBLIC METHODS //
-   $scope.test = function() {
-      console.log("testing");
-   }
-
    $scope.playerAction = function () {
       switch ($scope.player_action) {
          case PLAYER_ACTION.JOIN: {
@@ -207,14 +242,23 @@ app.controller('controller', function ($scope) {
          }
          case PLAYER_ACTION.LEAVE: {
             SERVER.leaveGame($scope.player_number);
-            $scope.updateGameInfo('To join a game, press "Join Game"!',
+            $scope.updateGameInfo(GAME_MESSAGE.JOIN_GAME,
                                   PLAYER_ACTION.JOIN,
-                                  SERVER.getUserId(),
+                                  $scope.player_id,
                                   '',
                                   '');
             break;
          }
       }      
+   };
+
+   $scope.alertPlayerLeft = function() {
+      alert(GAME_MESSAGE.PLAYER_LEFT);
+      $scope.updateGameInfo(GAME_MESSAGE.JOIN_SUCCESS,
+                            PLAYER_ACTION.LEAVE,
+                            SERVER.getUserId(),
+                            $scope.player_number,
+                            GAME_MESSAGE.WAIT_FOR_PLAYER);
    };
 
    // UI Methods
@@ -228,36 +272,48 @@ app.controller('controller', function ($scope) {
       $scope.updatePlayerId(playerId)
       $scope.updatePlayerNumber(playerNumber);
       $scope.updatePlayerTurn(playerTurn);
-   }
+   };
+
    $scope.updateGameMessage = function (gameMessage) {
       $scope.game_message = gameMessage;
-   }
+   };
 
    $scope.updatePlayerAction = function (playerAction) {
       $scope.player_action = playerAction;
-   }
+   };
 
    $scope.updatePlayerId = function (playerId) {
       $scope.player_id = playerId;
-   }
+   };
 
    $scope.updatePlayerNumber = function (playerNumber) {
       $scope.player_number = playerNumber;
-   }
+   };
 
    $scope.updatePlayerTurn = function (playerTurn) {
       $scope.player_turn = playerTurn;
-   }
+   };
 
    $scope.updateScopeBindings = function() {
       $scope.$apply();
-   }
+   };
 
-   ////////////////////////////
-   // Browser Event Handlers //
-   ////////////////////////////
-   $(window).bind("unload",function(e) {
-      SERVER.leaveGame($scope.player_number);
-      e.preventDefault();
-   }); 
+   ////////////////////////
+   // Game Driven Events //
+   $scope.hoverColumnIn = function() {
+      this.col[0].state = PIECE_STATE.RED;
+   };
+
+   $scope.hoverColumnOut = function() {
+      this.col[0].state = PIECE_STATE.EMPTY;
+   };
+
+   $scope.dropPiece = function() {
+      for (var i = this.col.length - 1; i > -1; --i) {
+         if (this.col[i].state == PIECE_STATE.EMPTY) {
+            this.col[i].state = PIECE_STATE.RED;
+            break;
+         }
+      }
+   };
 });

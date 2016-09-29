@@ -85,9 +85,7 @@ pubnub.subscribe({
     	console.log("presence: " + m.action + " , occupancy: " + m.occupancy);
     	if ((m.action === "timeout" || m.action === "leave") && active_players.hasOwnProperty(m.uuid)) 
     	{
-    		replenishPlayerNumber(active_players[m.uuid]);
-    		printActivePlayers();
-    		delete active_players[m.uuid];
+    		handleLeaveRequest(m.uuid, active_players[m.uuid]);
     	}
     },
     connect  : function(m) {
@@ -178,9 +176,13 @@ function handleJoinRequest(userId) {
 };
 
 function handleLeaveRequest(userId, playerNumber) {
+	console.log("player uuid on leave = " + userId);
+	printActivePlayers();
 	// re-gain player number of the player that left
 	replenishPlayerNumber(playerNumber);
 	delete active_players[userId];
 	printActivePlayers();
+	// Let other player know that their opponent has left the game
+	publishMessage(CHNLS.GAME, {msg : MSG.PLAYER_LEFT, uuid : userId});
 	// TODO: update lobby info
 };

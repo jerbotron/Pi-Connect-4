@@ -35,9 +35,9 @@
         </div>
 
         <div class="board">
-            <ul class="board-row" data-ng-repeat="rows in gameBoard">
-                <li class="tile" data-ng-repeat="item in rows.row">
-                	<span ng-model="item.state" class="piece piece-{{item.state}}" ></span>
+            <ul class="board-col" data-ng-repeat="col in gameBoard track by $index" ng-mouseover="hoverColumnIn()" ng-mouseleave="hoverColumnOut()" ng-click="dropPiece()">
+                <li class="tile" data-ng-repeat="item in col">
+                	<span class="piece piece-{{item.state}}" ></span>
                 </li>
             </ul>
         </div>
