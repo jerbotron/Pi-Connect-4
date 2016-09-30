@@ -166,7 +166,6 @@ var CLIENT_SERVER = (function ($app) {
    }
 
    return server;
-
 });
 
 ////////////////////////////
@@ -174,7 +173,7 @@ var CLIENT_SERVER = (function ($app) {
 ////////////////////////////
 var app = angular.module('app', []);
 
-app.controller('controller', function ($scope) {
+app.controller('controller', function ($scope, $timeout) {
 
    ///////////////
    // Constants //
@@ -204,31 +203,35 @@ app.controller('controller', function ($scope) {
       ...
    ]
    */
-   var col = (function() {          // Creates a single col of {ROW_COUNT} rows
+
+   // Constructor for a single col of {ROW_COUNT} pieces
+   var EMPTY_COL = (function() {
       var col = [];
       for (var r = 0; r < ROW_COUNT; ++r) 
       {
-         col.push({state: PIECE_STATE.EMPTY});
+         col.push({state: PIECE_STATE.EMPTY, filled: false});
       }
       return col;
    });
 
-   $scope.gameBoard = (function() {    // Creates the gameBoard of {COL_COUNT} columns
+   // Constructor for a gameBoard of {COL_COUNT} columns
+   var GAME_BOARD = (function() {
       var cols = [];
       for (var c = 0; c < COL_COUNT; ++c) 
       {
-         cols.push(new col());
+         cols.push(new EMPTY_COL());
       }
       return cols;
-   })();
+   });
 
-   // $scope.gameBoard = [col, col2]
+   // create new gameboard;
+   $scope.gameBoard = new GAME_BOARD();
 
    // Game state variables
    $scope.game_message = GAME_MESSAGE.JOIN_GAME;
    $scope.player_action = PLAYER_ACTION.JOIN;
    $scope.player_id = SERVER.getUserId();
-   $scope.player_number = "";
+   $scope.player_number = '';
    $scope.player_turn = '';
 
    ////////////////////
@@ -301,19 +304,117 @@ app.controller('controller', function ($scope) {
    ////////////////////////
    // Game Driven Events //
    $scope.hoverColumnIn = function() {
-      this.col[0].state = PIECE_STATE.RED;
+      if (!this.col[0].filled) 
+      {
+         this.col[0].state = PIECE_STATE.RED;
+      }
    };
 
    $scope.hoverColumnOut = function() {
-      this.col[0].state = PIECE_STATE.EMPTY;
+      if (!this.col[0].filled)
+      {
+         this.col[0].state = PIECE_STATE.EMPTY;
+      }
    };
 
    $scope.dropPiece = function() {
-      for (var i = this.col.length - 1; i > -1; --i) {
-         if (this.col[i].state == PIECE_STATE.EMPTY) {
+      for (var i = this.col.length - 1; i > -1; --i) 
+      {
+         if (!this.col[i].filled) 
+         {
             this.col[i].state = PIECE_STATE.RED;
+            this.col[i].filled = true;
+            var row = i;
             break;
          }
       }
+      $scope.checkWinner(this.$index, row, PIECE_STATE.RED, function(){
+         alert("You win!");
+         $scope.gameBoard = new GAME_BOARD();
+      });
    };
+
+   $scope.checkWinner = function(col, row, state, callback) {
+      /*
+         col: column of the piece of interest
+         row: row of the piece of interest
+         state: color of the current player, RED or YELLOW
+      */
+      
+      if (($scope.checkHorizontal(col, row, state) ||
+           $scope.checkVertical(col, row, state)) && callback) {
+         $timeout(callback, 300);
+      }
+   }
+
+   $scope.checkVertical = function(col, row, state) {
+      // count to keep track of now many pieces are in a row
+      var count = 0;
+      while (row < ROW_COUNT && $scope.gameBoard[col][row].state === state) {
+         count++;
+         row++;
+      }
+      return (count >= 4) ? true : false;
+   }
+
+   $scope.checkHorizontal = function(col, row, state) {
+      // count to keep track of now many pieces are in a row
+      var count = 0;
+      var col_l = col;
+      var col_r = col + 1;
+      // check left
+      while (col_l >= 0 && $scope.gameBoard[col_l][row].state === state) {
+         count++;
+         col_l--;
+      }
+      // check right
+      while (col_r >= 0 && $scope.gameBoard[col_r][row].state === state) {
+         count++;
+         col_r++;
+      }
+      return (count >= 4) ? true : false;
+   }
+
+   $scope.checkDiagonals = function(col, row, state) {
+      var count1 = 0;
+      // check /
+      var _col = col;
+      var _row = row;
+      // check left
+      while ((_col < COL_COUNT && _row >= 0) && 
+            $scope.gameBoard[_col][_row].state === state) {
+         count++;
+         _col--;
+         _col--;
+      }
+      // check right
+      _col = col+1;
+      _row = row+1;
+      while ((_col < COL_COUNT && _row >= 0) && 
+            $scope.gameBoard[_col][_row].state === state) {
+         count++;
+         _col++;
+         _row++;
+      }
+
+
+      var count2 = 0;
+      // check \
+   }
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
