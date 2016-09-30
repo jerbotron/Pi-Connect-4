@@ -11,17 +11,14 @@ with additional information, or with a simple "acknowledged" message.
 ## Game States
 
 * Initialize pubhub and other things. Wait for players to connect.
-* When a player request to join a game, look for an available player number (1 or 2). Send them
-  this player number, and mark it as used. If there are no player numbers, send a "game is full"
-  message. Joining as a new player will automatically set this as "ready".
+* When a player request to join a game, look for an available player color (RED or YELLOW). Send them
+  a player color, and mark it as used. If there are no player colors available, send a "game is full"
+  message.
 * Once we have two players, initialize the game and send out a "game start" message to the two
-  connected players. This message should include the color that the player will be using.
-* Every turn, to the player whose turn it is, we will send a "request move" message. Once they send
-  a move message, we will repond with a "move received" message, and update the game state as
-  necessary.
-* The player will send wither "left" or "right" commands, until finally they send a "drop" command.
-  "left" and "right" commands will move the cursor around - a "drop" command will lock in their
-  move. We'll process the move, then let the other player know it is their turn.
+  connected players.
+* Every turn, to the player whose turn it is, we will send a "your turn" message. Once they send
+  a move message, we will repond with a "move received" message, and update the other player on the
+  new game board state.
 * At any point, a player can send a "leave game" message, which will automatically end the game.
   We will send a "game over" message with the reason being that one player left. At this point we
   will wait for players once more.
@@ -33,16 +30,13 @@ with additional information, or with a simple "acknowledged" message.
 ## Controller States
 
 * Initialize all variables and wait to connect to the server.
-* Send a request to the server to join the game. We will either get assigned a player number, or we
+* Send a request to the server to join the game. We will either get assigned a player color, or we
   will get a "game is full" message.
-* If we got assigned a player number, update the internal state and wait for the server to say that
+* If we got assigned a player color, update the internal state and wait for the server to say that
   the game has started.
-* When the game starts, we will be assigned a color. Update things accordingly and wait for it to
-  be our turn.
-* When a move is requested, we will make the move buttons active. The buttons will be capable of
-  sending "left", "right", and "drop" commands.
-* Once we send a "drop" command, we will disable the move buttons and let the player know that it
-  is the other player's turn.
+* When the game starts, update game messages accordingly and wait for it to be our turn.
+* When it's our turn, we will be able to hover over the columns and click to drop a piece. Send the 
+  coordinates of our dropped piece to the server and update game board and disable hovering/drop.
 * At any time, we may get a message from the server that the game is over, either from one player
   winning, or from the other player leaving the game. Update the UI accordingly.
 
@@ -52,59 +46,25 @@ JSON will be used to send messages back and forth. Once a player has received th
 they will use a player-specific channel to communicate with the server.
 
 Channels:
-* ledgame_server
-* ledgame_player
-* ledgame_player1
-* ledgame_player2
-* ledgame_server_player1
-* ledgame_server_player2
+* CHNL.LOBBY
+* CHNL.GAME
 
 Joining a game:
 ```
-ledgame_player: { msg: REQUEST_JOIN }
-ledgame_server: { msg: JOIN_SUCCESS, player: 1 }
+CHNL.LOBBY: { msg: REQUEST_JOIN, uuid: playerId }
+CHNL.LOBBY: { msg: JOIN_SUCCESS, playerColor: 'red' }
 
-ledgame_player: { msg: REQUEST_JOIN }
-ledgame_server: { msg: JOIN_FAIL }
+CHNL.LOBBY: { msg: REQUEST_JOIN, uuid: playerId }
+CHNL.LOBBY: { msg: JOIN_FAIL }
 ```
 
-After this transaction takes place, the player/server will use player-specific channels to
+After this transaction takes place, the player/server will use game channel to
 communicate.
-
-Sending a "player ready" message:
-```
-ledgame_player1: { msg: PLAYER_READY }
-ledgame_server1: { msg: ACK }
-```
 
 Starting the game:
 ```
-ledgame_server1: { msg: START_GAME, color: red }
-ledgame_player1: { msg: ACK }
-
-ledgame_server2: { msg: START_GAME, color: green }
-ledgame_player2: { msg: ACK }
-```
-
-Selecting a player for a turn:
-```
-ledgame_server1: { msg: REQUEST_TURN }
-ledgame_player1: { msg: ACK }
-
-ledgame_server2: { msg: WAIT_YOUR_TURN }
-ledgame_player2: { msg: ACK }
-```
-
-Sending commands to the server when it is your turn:
-```
-ledgame_player1: { msg: MOVE_CUR_LEFT }
-ledgame_server1: { msg: ACK }
-
-ledgame_player1: { msg: MOVE_CUR_RIGHT }
-ledgame_server1: { msg: ACK }
-
-ledgame_player1: { msg: DROP }
-ledgame_server1: { msg: ACK }
+CHNL.GAME: { msg: START_GAME, playerTurn: playerId }
+CHNL.GAME: { msg: ACK }
 ```
 
 Once a DROP message has been sent, a player's turn ends. After the drop has been processed, the
@@ -113,18 +73,18 @@ if the game has been one.
 
 Game Over message:
 ```
-ledgame_server1: { msg: GAME_OVER, reason: WIN }
-ledgame_player1: { msg: ACK }
+CHNL.GAME: { msg: GAME_OVER, reason: WIN }
+CHNL.GAME: { msg: ACK }
 
-ledgame_server2: { msg: GAME_OVER, reason: LOSE }
-ledgame_player2: { msg: ACK }
+CHNL.GAME: { msg: GAME_OVER, reason: LOSE }
+CHNL.GAME: { msg: ACK }
 
-ledgame_server1: { msg: GAME_OVER, reason: PLAYER_LEFT }
-ledgame_player1: { msg: ACK }
+CHNL.GAME: { msg: GAME_OVER, reason: PLAYER_LEFT }
+CHNL.GAME: { msg: ACK }
 ```
 
 A player can leave the game at any time:
 ```
-ledgame_player1: { msg: LEAVE_GAME }
-ledgame_server1: { msg: ACK }
+CHNL.GAME: { msg: LEAVE_GAME }
+CHNL.GAME: { msg: ACK }
 ```
