@@ -47,8 +47,13 @@ var pubnub = PUBNUB.init({
 // Channels
 var CHNLS = {
 	LOBBY : "lobby",
-	GAME : "game"
+	GAME  : "game"
 };
+
+var PLAYER_COLORS = {
+	RED 	: "red",
+	YELLOW 	: "yellow"
+}
 
 var MSG = {
    ACK            : 'ack',
@@ -57,18 +62,15 @@ var MSG = {
    JOIN_FAIL   	  : 'join_fail',
    PLAYER_LEFT    : 'player_left',
    START_GAME     : 'start_game',
-   REQUEST_TURN   : 'request_turn',
-   WAIT_YOUR_TURN : 'wait_your_turn',
-   MOVE_CUR_LEFT  : 'move_cur_left',
-   MOVE_CUR_RIGHT : 'move_cur_right',
-   DROP           : 'drop',
+   FINISHED_TURN  : 'finished_turn',
    LEAVE_GAME     : 'leave_game',
    GAME_OVER      : 'game_over'
 };
 
-// Player numbers to be assigned to calling clients
-var player_numbers = ['1', '2'];
+// Available player colors to be assigned to calling clients
+var available_player_colors = ['red', 'yellow'];
 var active_players = {};
+var playerToGoFirst = PLAYER_COLORS.RED;
 
 // Subscribe to LOBBY channel and GAME channel
 
@@ -81,7 +83,7 @@ pubnub.subscribe({
     },
     presence : function(m) {
     	// On timeout, if timed out player was an active player, 
-    	// replenenish their player number
+    	// replenenish their player color
     	console.log("presence: " + m.action + " , occupancy: " + m.occupancy);
     	if ((m.action === "timeout" || m.action === "leave") && active_players.hasOwnProperty(m.uuid)) 
     	{
@@ -90,7 +92,6 @@ pubnub.subscribe({
     },
     connect  : function(m) {
     	console.log("SERVER > LOBBY channel connected to PubNub Cloud");
-    	// publishMessage(CHNLS.LOBBY, {msg : "SERVER lobby channel connected to PubNub Cloud"});
     }
 });
 
@@ -101,7 +102,6 @@ pubnub.subscribe({
 	message : handleGameRequests,
 	connect : function(m) {
 		console.log("SERVER > GAME channel connected to PubNub Cloud");
-		// publishMessage(CHNLS.GAME, {msg : "SERVER game channel connected to PubNub Cloud"});
 	}
 });
 
@@ -115,9 +115,9 @@ function publishMessage(channelName, message) {
 function handleLobbyRequests(message) {
 	/*
 		Allow server to handle client requests to join/leave game
-		* If there are still existing player numbers to give out,
+		* If there are still existing player colors to give out,
 		  publish them to client upon REQUEST_JOIN
-		* Push player number back to server container when a client
+		* Push player color back to server container when a client
 		  sends LEAVE_GAME request
 		* If there are no more available game slots, then send back
 		  JOIN_FAIL message to client
@@ -132,16 +132,23 @@ function handleLobbyRequests(message) {
 
 function handleGameRequests(message) {
 	switch (message.msg) {
+		case MSG.GAME_OVER: {
+			// If both players are still in the game, start the game after 1 second
+			if (available_player_colors.length === 0) {
+				setTimeout(startGame, 1000);
+			}
+			break;
+		}
 		case MSG.LEAVE_GAME: {
-			// player uuid, player number
-			handleLeaveRequest(message.uuid, message.playerNumber);
+			// player uuid, player color
+			handleLeaveRequest(message.uuid, message.playerColor);
 			break;
 		}
 	}
-}
+};
 
 function printActivePlayers() {
-	console.log("player numbers remaining: [" + player_numbers + "]");
+	console.log("player colors remaining: [" + available_player_colors + "]");
 	for (var player in active_players) {
 		if (active_players.hasOwnProperty(player)) {
 			console.log(player + ": " + active_players[player]);
@@ -149,37 +156,51 @@ function printActivePlayers() {
 	}
 };
 
-function replenishPlayerNumber(playerNumber) {
-	console.log("player_number on leave = " + playerNumber);
-	// if not found, add to player_numbers pool
-	if (player_numbers.indexOf(playerNumber) == -1) 
-	{
-		if (playerNumber === "1")
-			player_numbers.unshift(playerNumber);
+function replenishPlayerColor(playerColor) {
+	console.log("player_color on leave = " + playerColor);
+	// if not found, add to available_player_colors pool
+	if (available_player_colors.indexOf(playerColor) == -1) {
+		if (playerColor === PLAYER_COLORS.RED)
+			available_player_colors.unshift(playerColor);
 		else
-			player_numbers.push(playerNumber);
+			available_player_colors.push(playerColor);
 	}
 };
 
 function handleJoinRequest(userId) {
-	if (player_numbers.length > 0) 
-	{
-		var player_number = player_numbers.shift();
-		active_players[userId] = player_number;
-		publishMessage(CHNLS.LOBBY, {msg : MSG.JOIN_SUCCESS, uuid : userId, playerNumber : player_number});
+	if (available_player_colors.length > 0) {
+		var playerColor = available_player_colors.shift();
+		active_players[userId] = playerColor;
+		publishMessage(CHNLS.LOBBY, {msg : MSG.JOIN_SUCCESS, uuid : userId, playerColor : playerColor});
+
+		// If both players have joined the game, start the game
+		if (available_player_colors.length === 0) {
+			startGame();
+		}
 	} 
-	else 
-	{
+	else {
 		publishMessage(CHNLS.LOBBY, {msg : MSG.JOIN_FAIL, uuid : userId});
 	}
 	printActivePlayers();
 };
 
-function handleLeaveRequest(userId, playerNumber) {
+function startGame() {
+	// find the userId of the playerToGoFirst
+	for (var userId in active_players) {
+		if (active_players[userId] === playerToGoFirst) {
+			publishMessage(CHNLS.GAME, {msg : MSG.START_GAME, playerStart : userId});
+			// alternate which player gets to go first each round
+			playerToGoFirst = (playerToGoFirst === PLAYER_COLORS.RED) ? PLAYER_COLORS.YELLOW : PLAYER_COLORS.RED;
+			break;
+		}
+	}
+}
+
+function handleLeaveRequest(userId, playerColor) {
 	console.log("player uuid on leave = " + userId);
 	printActivePlayers();
-	// re-gain player number of the player that left
-	replenishPlayerNumber(playerNumber);
+	// re-gain player color of the player that left
+	replenishPlayerColor(playerColor);
 	delete active_players[userId];
 	printActivePlayers();
 	// Let other player know that their opponent has left the game

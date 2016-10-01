@@ -24,14 +24,13 @@
     <div class="container text-center" ng-controller="controller">
         <h1>Pi Connect 4</h1>
 
-        <p>{{game_message}}</p>
+        <p>{{gameMessage}}</p>
 
-        <input type="button" value="{{player_action}}" ng-click="playerAction()" /><br/><br/>
+        <input type="button" value="{{playerAction}}" ng-click="buttonAction()" /><br/><br/>
 
         <div class="info">
-            <div>Player Id: {{player_id}}</div>
-            <div>Player number: {{player_number}}</div>
-            <div>Player turn: {{player_turn}}</div>
+            <div>Player Id: {{playerId}}</div>
+            <div>Player color: <span class='player-{{playerColor}}'></span></div>
         </div>
 
         <div class="board">
