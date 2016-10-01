@@ -5,8 +5,8 @@ var app = express();
 var server = require('http').createServer(app);
 var port = process.env.PORT || 80;
 
-var fs      = require('fs');
 var PUBNUB = require('pubnub');
+var fs = require('fs');
 
 // ExpressJS app 
 app.use(express.static('public', { index: false })); // serve public directory; don't auto-serve index.html
@@ -24,10 +24,6 @@ server.listen(5000, function () {
 });
 
 
-/*
- * Connect 4 Communication Handlers
-*/
-
 // Initialize PubNub
 var pubnub = PUBNUB.init({
     publish_key    : 'pub-c-4eb11ea9-5b88-48c9-b43a-9e85200f6197',
@@ -38,13 +34,8 @@ var pubnub = PUBNUB.init({
     }
 })
 
-/* 
- * Channel Subscriptions
-*/
+// Constant Declarations
 
-// Variable Declarations
-
-// Channels
 var CHNLS = {
 	LOBBY : "lobby",
 	GAME  : "game"

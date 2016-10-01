@@ -24,13 +24,13 @@ var PLAYER_ACTION = {
 
 var GAME_MESSAGE = {
    JOIN_GAME         : 'To join a game, press "Join Game"!',
-   JOIN_SUCCESS      : 'You joined the game!',
+   JOIN_SUCCESS      : 'You joined the game! Waiting for other player...',
    GAME_FULL         : 'Game is currently full! Please try again later.',
    PLAYER_LEFT       : 'Your opponent left the game.',
    GAME_START_GO     : 'Game started! It\'s your turn!',
-   GAME_START_WAIT   : 'Game started! Waiting for other player',
+   GAME_START_WAIT   : 'Game started! Waiting for other player\'s turn...',
    YOUR_TURN         : 'It\s your turn!',
-   WAIT_YOUR_TURN    : 'Waiting for other player'
+   WAIT_YOUR_TURN    : 'Waiting for other player\'s turn...'
 }
 
 ///////////////////
@@ -297,6 +297,8 @@ app.controller('controller', function ($scope, $timeout) {
                                   $scope.playerId,
                                   '',
                                   false);
+            
+            $scope.gameBoard = new GAME_BOARD();   // clear game board
             break;
          }
       }      
